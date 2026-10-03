@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Trivia Quiz Custom Builder</title>
+<script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-violet-50 min-h-screen flex flex-col items-center py-6 px-3">
+<h1 class="text-3xl font-bold mb-1 text-violet-800">Trivia Quiz Builder</h1>
+<p class="text-slate-500 text-sm mb-4">Play the built-in quiz or create your own!</p>
+
+<!-- Navigation tabs -->
+<div class="flex gap-1 mb-6 bg-white rounded-xl p-1 shadow-sm border border-violet-100">
+  <button class="nav-btn active px-4 py-2 rounded-lg text-sm font-semibold transition-colors" data-tab="play" aria-pressed="true">Play</button>
+  <button class="nav-btn px-4 py-2 rounded-lg text-sm font-semibold transition-colors" data-tab="create" aria-pressed="false">Create</button>
+  <button class="nav-btn px-4 py-2 rounded-lg text-sm font-semibold transition-colors" data-tab="manage" aria-pressed="false">My Quizzes</button>
+</div>
+
+<!-- PLAY TAB -->
+<div id="tab-play" class="w-full max-w-lg">
+  <!-- Quiz selection -->
+  <div id="play-select" class="space-y-3">
+    <h2 class="font-bold text-slate-700 text-lg mb-3">Select a Quiz</h2>
+    <div class="flex gap-2 mb-3 flex-wrap">
+      <label class="text-sm text-slate-600 self-center">Timer per Q:</label>
+      <select id="timer-setting" class="border rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300" aria-label="Timer per question">
+        <option value="0">No timer</option>
+        <option value="10">10s</option>
+        <option value="15">15s</option>
+        <option value="20" selected>20s</option>
+        <option value="30">30s</option>
+      </select>
+      <label class="text-sm text-slate-600 self-center ml-2">Mode:</label>
+      <select id="play-mode" class="border rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300" aria-label="Play mode">
+        <option value="solo">Solo</option>
+        <option value="multi">Multiplayer (2P)</option>
+      </select>
+      <label class="flex items-center gap-1 text-sm text-slate-600 ml-2 cursor-pointer">
+        <input type="checkbox" id="shuffle-opt" class="rounded" aria-label="Shuffle questions"> Shuffle
+      </label>
+    </div>
+    <div id="quiz-list" class="space-y-2"></div>
+  </div>
+
+  <!-- Player names (multiplayer) -->
+  <div id="player-names" class="hidden bg-white rounded-xl p-5 shadow-sm border border-violet-100">
+    <h2 class="font-bold text-slate-700 mb-3">Enter Player Names</h2>
+    <div class="space-y-2 mb-4">
+      <input id="p1-name" type="text" class="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-violet-300" placeholder="Player 1 name" aria-label="Player 1 name" value="Player 1">
+      <input id="p2-name" type="text" class="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-violet-300" placeholder="Player 2 name" aria-label="Player 2 name" value="Player 2">
+    </div>
+    <button id="btn-start-multi" class="w-full py-3 bg-violet-600 text-white font-bold rounded-xl hover:bg-violet-700 focus:outline-none focus:ring-2 focus:ring-violet-400" aria-label="Start multiplayer quiz">Start!</button>
+    <button id="btn-cancel-multi" class="w-full py-2 mt-2 text-slate-500 hover:text-slate-700 text-sm focus:outline-none" aria-label="Cancel">Cancel</button>
+  </div>
+
+  <!-- Active quiz (question) -->
+  <div id="play-question" class="hidden">
+    <div class="flex justify-between items-center mb-3">
+      <div id="q-progress" class="text-sm text-slate-500"></div>
+      <div id="current-player-badge" class="hidden bg-violet-100 text-violet-700 text-xs font-bold px-3 py-1 rounded-full"></div>
+      <div id="timer-display" class="hidden text-lg font-bold text-red-500 bg-red-50 px-3 py-1 rounded-full"></div>
+    </div>
+    <div class="bg-white rounded-2xl shadow-md p-6 mb-3">
+      <div id="q-category" class="text-xs font-semibold text-violet-400 uppercase mb-2"></div>
+      <p id="q-text" class="text-lg font-semibold text-slate-800 mb-5"></p>
+      <div id="q-choices" class="grid grid-cols-1 gap-2"></div>
+    </div>
+    <button id="btn-skip" class="text-sm text-slate-400 hover:text-slate-600 mx-auto block focus:outline-none" aria-label="Skip question">Skip →</button>
+  </div>
+
+  <!-- Results -->
+  <div id="play-results" class="hidden">
+    <div class="bg-white rounded-2xl shadow-md p-6 mb-4 text-center">
+      <div class="text-4xl mb-2">🏆</div>
+      <h2 class="text-2xl font-bold text-slate-800 mb-1" id="results-title"></h2>
+      <p id="results-score" class="text-slate-600 mb-1"></p>
+      <div id="results-players" class="hidden mt-3 space-y-1"></div>
+    </div>
+    <h3 class="font-semibold text-slate-700 mb-2">Review Answers</h3>
+    <div id="results-review" class="space-y-2 mb-4"></div>
+    <button id="btn-play-again" class="w-full py-3 bg-violet-600 text-white font-bold rounded-xl hover:bg-violet-700 focus:outline-none focus:ring-2 focus:ring-violet-400" aria-label="Play again">Play Again</button>
+  </div>
+</div>
+
+<!-- CREATE TAB -->
+<div id="tab-create" class="hidden w-full max-w-lg">
+  <div class="bg-white rounded-2xl shadow-md p-5 mb-4">
+    <h2 class="font-bold text-slate-700 mb-4">Create a Quiz</h2>
+    <input id="quiz-title-input" type="text" class="w-full border rounded-lg px-3 py-2 mb-3 focus:outline-none focus:ring-2 focus:ring-violet-300" placeholder="Quiz title..." aria-label="Quiz title" maxlength="80">
+    <div id="questions-editor" class="space-y-4 mb-4"></div>
+    <button id="btn-add-q" class="w-full py-2 border-2 border-dashed border-violet-300 text-violet-500 rounded-xl hover:bg-violet-50 font-semibold focus:outline-none focus:ring-2 focus:ring-violet-300" aria-label="Add question">+ Add Question</button>
+  </div>
+  <div class="flex gap-2">
+    <button id="btn-save-quiz" class="flex-1 py-3 bg-violet-600 text-white font-bold rounded-xl hover:bg-violet-700 focus:outline-none focus:ring-2 focus:ring-violet-400" aria-label="Save quiz">Save Quiz</button>
+    <button id="btn-export" class="px-4 py-3 border border-violet-300 text-violet-700 font-semibold rounded-xl hover:bg-violet-50 focus:outline-none" aria-label="Export quiz as JSON">Export JSON</button>
+  </div>
+  <div class="mt-3 flex gap-2 items-center">
+    <label for="import-file" class="flex-1 py-2 text-center border border-slate-300 text-slate-600 font-semibold rounded-xl hover:bg-slate-50 cursor-pointer text-sm focus-within:ring-2 focus-within:ring-violet-300">Import JSON<input type="file" id="import-file" accept=".json" class="sr-only" aria-label="Import quiz from JSON"></label>
+  </div>
+  <div id="create-feedback" class="mt-2 text-sm text-center h-5"></div>
+</div>
+
+<!-- MANAGE TAB -->
+<div id="tab-manage" class="hidden w-full max-w-lg">
+  <h2 class="font-bold text-slate-700 mb-3">My Quizzes</h2>
+  <div id="manage-list" class="space-y-2"></div>
+  <p id="manage-empty" class="text-slate-400 text-sm text-center mt-4 hidden">No custom quizzes saved yet. Create one in the Create tab!</p>
+</div>
+
+<style>
+.nav-btn.active { background:#7c3aed; color:white; }
+.nav-btn:not(.active) { color:#6b7280; }
+.choice-btn { transition: background 0.15s, color 0.15s; }
+.choice-btn.correct { background:#dcfce7 !important; border-color:#86efac !important; color:#166534 !important; }
+.choice-btn.wrong { background:#fee2e2 !important; border-color:#fca5a5 !important; color:#991b1b !important; }
+</style>
+
+<script>
+// ── Built-in quiz ──
+const BUILTIN_QUIZ = {
+  id: 'builtin',
+  title: 'General Knowledge (20 Questions)',
+  builtin: true,
+  questions: [
+    {q:'What is the capital of France?',choices:['London','Paris','Berlin','Madrid'],correct:1,cat:'Geography'},
+    {q:'How many planets are in our solar system?',choices:['7','8','9','10'],correct:1,cat:'Science'},
+    {q:'Who painted the Mona Lisa?',choices:['Van Gogh','Picasso','Da Vinci','Rembrandt'],correct:2,cat:'Art'},
+    {q:'What is the chemical symbol for gold?',choices:['Go','Gd','Au','Ag'],correct:2,cat:'Science'},
+    {q:'In which year did World War II end?',choices:['1943','1944','1945','1946'],correct:2,cat:'History'},
+    {q:'What is the largest ocean on Earth?',choices:['Atlantic','Indian','Arctic','Pacific'],correct:3,cat:'Geography'},
+    {q:'Who wrote "Romeo and Juliet"?',choices:['Dickens','Shakespeare','Austen','Hemingway'],correct:1,cat:'Literature'},
+    {q:'What is the square root of 144?',choices:['10','11','12','13'],correct:2,cat:'Math'},
+    {q:'Which element has the atomic number 1?',choices:['Helium','Oxygen','Hydrogen','Carbon'],correct:2,cat:'Science'},
+    {q:'What is the fastest land animal?',choices:['Lion','Cheetah','Leopard','Horse'],correct:1,cat:'Nature'},
+    {q:'How many sides does a hexagon have?',choices:['5','6','7','8'],correct:1,cat:'Math'},
+    {q:'What language is spoken in Brazil?',choices:['Spanish','Portuguese','French','English'],correct:1,cat:'Geography'},
+    {q:'Who invented the telephone?',choices:['Edison','Tesla','Bell','Morse'],correct:2,cat:'History'},
+    {q:'What is the largest planet in our solar system?',choices:['Saturn','Neptune','Jupiter','Uranus'],correct:2,cat:'Science'},
+    {q:'In what year did the Titanic sink?',choices:['1910','1911','1912','1913'],correct:2,cat:'History'},
+    {q:'What is the tallest mountain in the world?',choices:['K2','Kangchenjunga','Everest','Lhotse'],correct:2,cat:'Geography'},
+    {q:'Who wrote "1984"?',choices:['Huxley','Orwell','Bradbury','Wells'],correct:1,cat:'Literature'},
+    {q:'What is the currency of Japan?',choices:['Won','Yen','Yuan','Ringgit'],correct:1,cat:'Geography'},
+    {q:'How many strings does a standard guitar have?',choices:['4','5','6','7'],correct:2,cat:'Music'},
+    {q:'What is the powerhouse of the cell?',choices:['Nucleus','Ribosome','Mitochondria','Vacuole'],correct:2,cat:'Science'},
+  ]
+};
+
+// ── State ──
+let activeTab = 'play';
+let currentQuizId = null;
+let pendingMulti = false;
+let currentQuestions = [];
+let qIndex = 0;
+let answers = []; // {chosen, correct}
+let playerScores = [0, 0];
+let playerNames = ['Player 1', 'Player 2'];
+let currentPlayer = 0;
+let timerDuration = 20;
+let timerInterval = null;
+let timerLeft = 0;
+let isMulti = false;
+let editingQIndex = null;
+
+// ── Persistence ──
+function loadQuizzes() {
+  try { return JSON.parse(localStorage.getItem('tq_quizzes') || '[]'); } catch(_) { return []; }
+}
+function saveQuizzes(quizzes) {
+  try { localStorage.setItem('tq_quizzes', JSON.stringify(quizzes)); } catch(_) {}
+}
+function getAllQuizzes() { return [BUILTIN_QUIZ, ...loadQuizzes()]; }
+
+// ── Tabs ──
+document.querySelectorAll('.nav-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const tab = btn.dataset.tab;
+    document.querySelectorAll('.nav-btn').forEach(b => { b.classList.remove('active'); b.setAttribute('aria-pressed','false'); });
+    btn.classList.add('active'); btn.setAttribute('aria-pressed','true');
+    ['play','create','manage'].forEach(t => document.getElementById('tab-'+t).classList.toggle('hidden', t !== tab));
+    if (tab === 'manage') renderManage();
+    if (tab === 'play') renderQuizList();
+    activeTab = tab;
+  });
+});
+
+// ── Play Tab ──
+function renderQuizList() {
+  const list = document.getElementById('quiz-list');
+  list.innerHTML = '';
+  getAllQuizzes().forEach(quiz => {
+    const card = document.createElement('div');
+    card.className = 'bg-white rounded-xl p-4 shadow-sm border border-violet-100 flex justify-between items-center';
+    const info = document.createElement('div');
+    const title = document.createElement('p');
+    title.className = 'font-semibold text-slate-700';
+    title.textContent = quiz.title;
+    const meta = document.createElement('p');
+    meta.className = 'text-xs text-slate-400';
+    meta.textContent = quiz.questions.length + ' questions' + (quiz.builtin ? ' · Built-in' : ' · Custom');
+    info.appendChild(title); info.appendChild(meta);
+    const btn = document.createElement('button');
+    btn.className = 'px-4 py-2 bg-violet-600 text-white font-semibold rounded-lg hover:bg-violet-700 focus:outline-none focus:ring-2 focus:ring-violet-400 text-sm';
+    btn.textContent = 'Play';
+    btn.setAttribute('aria-label', 'Play ' + quiz.title);
+    btn.addEventListener('click', () => startPlay(quiz.id));
+    card.appendChild(info); card.appendChild(btn);
+    list.appendChild(card);
+  });
+}
+
+function startPlay(quizId) {
+  currentQuizId = quizId;
+  const mode = document.getElementById('play-mode').value;
+  isMulti = mode === 'multi';
+  timerDuration = parseInt(document.getElementById('timer-setting').value);
+  if (isMulti) {
+    document.getElementById('play-select').classList.add('hidden');
+    document.getElementById('player-names').classList.remove('hidden');
+    pendingMulti = true;
+  } else {
+    launchQuiz();
+  }
+}
+
+document.getElementById('btn-start-multi').addEventListener('click', () => {
+  playerNames[0] = document.getElementById('p1-name').value.trim() || 'Player 1';
+  playerNames[1] = document.getElementById('p2-name').value.trim() || 'Player 2';
+  document.getElementById('player-names').classList.add('hidden');
+  document.getElementById('play-select').classList.remove('hidden');
+  pendingMulti = false;
+  launchQuiz();
+});
+document.getElementById('btn-cancel-multi').addEventListener('click', () => {
+  document.getElementById('player-names').classList.add('hidden');
+  document.getElementById('play-select').classList.remove('hidden');
+  pendingMulti = false;
+});
+
+function launchQuiz() {
+  const quiz = getAllQuizzes().find(q => q.id === currentQuizId);
+  if (!quiz) return;
+  const doShuffle = document.getElementById('shuffle-opt').checked;
+  currentQuestions = [...quiz.questions];
+  if (doShuffle) { for(let i=currentQuestions.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[currentQuestions[i],currentQuestions[j]]=[currentQuestions[j],currentQuestions[i]];} }
+  qIndex = 0;
+  answers = [];
+  playerScores = [0, 0];
+  currentPlayer = 0;
+  document.getElementById('play-select').classList.add('hidden');
+  document.getElementById('play-results').classList.add('hidden');
+  document.getElementById('play-question').classList.remove('hidden');
+  renderQuestion();
+}
+
+function renderQuestion() {
+  if (qIndex >= currentQuestions.length) { showResults(); return; }
+  const q = currentQuestions[qIndex];
+  document.getElementById('q-progress').textContent = 'Question ' + (qIndex+1) + ' / ' + currentQuestions.length;
+  document.getElementById('q-category').textContent = q.cat || '';
+  document.getElementById('q-text').textContent = q.q;
+  const badge = document.getElementById('current-player-badge');
+  if (isMulti) { badge.classList.remove('hidden'); badge.textContent = playerNames[currentPlayer] + '\'s turn'; }
+  else badge.classList.add('hidden');
+
+  const choices = document.getElementById('q-choices');
+  choices.innerHTML = '';
+  q.choices.forEach((ch, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'choice-btn w-full text-left px-4 py-3 border-2 border-slate-200 rounded-xl hover:border-violet-400 hover:bg-violet-50 font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-violet-300';
+    btn.setAttribute('aria-label', 'Choice ' + (i+1) + ': ' + ch);
+    btn.textContent = String.fromCharCode(65+i) + '. ' + ch;
+    btn.addEventListener('click', () => answerQuestion(i, btn));
+    choices.appendChild(btn);
+  });
+
+  if (timerDuration > 0) {
+    clearInterval(timerInterval);
+    timerLeft = timerDuration;
+    const td = document.getElementById('timer-display');
+    td.classList.remove('hidden');
+    td.textContent = timerLeft + 's';
+    timerInterval = setInterval(() => {
+      timerLeft--;
+      td.textContent = timerLeft + 's';
+      if (timerLeft <= 0) { clearInterval(timerInterval); skipQuestion(); }
+    }, 1000);
+  } else {
+    document.getElementById('timer-display').classList.add('hidden');
+  }
+}
+
+function answerQuestion(choiceIdx, btn) {
+  clearInterval(timerInterval);
+  const q = currentQuestions[qIndex];
+  const isCorrect = choiceIdx === q.correct;
+  answers.push({ chosen: choiceIdx, correct: q.correct, question: q });
+  // Highlight
+  const allBtns = document.querySelectorAll('.choice-btn');
+  allBtns.forEach((b, i) => {
+    b.disabled = true;
+    if (i === q.correct) b.classList.add('correct');
+    else if (i === choiceIdx && !isCorrect) b.classList.add('wrong');
+  });
+  if (isCorrect) { if (isMulti) playerScores[currentPlayer]++; }
+  if (isMulti) currentPlayer = 1 - currentPlayer;
+  document.getElementById('btn-skip').textContent = isCorrect ? 'Next →' : 'Next →';
+  setTimeout(() => { qIndex++; renderQuestion(); }, 1200);
+}
+
+function skipQuestion() {
+  clearInterval(timerInterval);
+  answers.push({ chosen: -1, correct: currentQuestions[qIndex].correct, question: currentQuestions[qIndex] });
+  if (isMulti) currentPlayer = 1 - currentPlayer;
+  qIndex++;
+  renderQuestion();
+}
+
+document.getElementById('btn-skip').addEventListener('click', skipQuestion);
+
+function showResults() {
+  clearInterval(timerInterval);
+  document.getElementById('play-question').classList.add('hidden');
+  document.getElementById('play-results').classList.remove('hidden');
+  const correct = answers.filter(a => a.chosen === a.correct).length;
+  const total = answers.length;
+  const pct = Math.round((correct / total) * 100);
+  document.getElementById('results-title').textContent = pct >= 80 ? 'Excellent!' : pct >= 60 ? 'Well Done!' : pct >= 40 ? 'Not Bad!' : 'Keep Practicing!';
+  document.getElementById('results-score').textContent = correct + ' / ' + total + ' correct (' + pct + '%)';
+  if (isMulti) {
+    const rp = document.getElementById('results-players');
+    rp.classList.remove('hidden');
+    rp.innerHTML = '';
+    const winner = playerScores[0] > playerScores[1] ? playerNames[0] : playerScores[1] > playerScores[0] ? playerNames[1] : 'Tie!';
+    [0,1].forEach(i => {
+      const p = document.createElement('p');
+      p.className = 'text-sm font-medium ' + (playerScores[i] >= playerScores[1-i] && playerScores[i] > playerScores[1-i] ? 'text-violet-700 font-bold' : 'text-slate-600');
+      p.textContent = playerNames[i] + ': ' + playerScores[i] + ' pts';
+      rp.appendChild(p);
+    });
+    const pw = document.createElement('p');
+    pw.className = 'text-sm font-bold text-amber-600 mt-1';
+    pw.textContent = playerScores[0] === playerScores[1] ? '🤝 Tie!' : '🏆 Winner: ' + winner;
+    rp.appendChild(pw);
+  } else {
+    document.getElementById('results-players').classList.add('hidden');
+  }
+  const review = document.getElementById('results-review');
+  review.innerHTML = '';
+  answers.forEach((a, i) => {
+    const card = document.createElement('div');
+    const isCorrect = a.chosen === a.correct;
+    card.className = 'bg-white rounded-xl p-3 border ' + (isCorrect ? 'border-green-200' : 'border-red-200');
+    const qp = document.createElement('p');
+    qp.className = 'text-sm font-semibold text-slate-700 mb-1';
+    qp.textContent = (i+1) + '. ' + a.question.q;
+    card.appendChild(qp);
+    a.question.choices.forEach((ch, ci) => {
+      const cp = document.createElement('p');
+      cp.className = 'text-xs px-2 py-0.5 rounded ' +
+        (ci === a.correct ? 'text-green-700 bg-green-50 font-semibold' :
+         ci === a.chosen && !isCorrect ? 'text-red-700 bg-red-50' : 'text-slate-400');
+      cp.textContent = (ci === a.correct ? '✓ ' : ci === a.chosen ? '✗ ' : '  ') + String.fromCharCode(65+ci) + '. ' + ch;
+      card.appendChild(cp);
+    });
+    review.appendChild(card);
+  });
+}
+
+document.getElementById('btn-play-again').addEventListener('click', () => {
+  document.getElementById('play-results').classList.add('hidden');
+  document.getElementById('play-select').classList.remove('hidden');
+  renderQuizList();
+});
+
+// ── Create Tab ──
+let editorQuestions = [];
+
+function renderEditor() {
+  const container = document.getElementById('questions-editor');
+  container.innerHTML = '';
+  editorQuestions.forEach((q, qi) => {
+    const card = document.createElement('div');
+    card.className = 'bg-slate-50 rounded-xl border border-slate-200 p-4';
+    const header = document.createElement('div');
+    header.className = 'flex justify-between items-center mb-2';
+    const label = document.createElement('span');
+    label.className = 'text-sm font-bold text-slate-600';
+    label.textContent = 'Q' + (qi+1);
+    const del = document.createElement('button');
+    del.className = 'text-xs text-red-400 hover:text-red-600 focus:outline-none';
+    del.textContent = 'Remove';
+    del.setAttribute('aria-label', 'Remove question ' + (qi+1));
+    del.addEventListener('click', () => { editorQuestions.splice(qi,1); renderEditor(); });
+    header.appendChild(label); header.appendChild(del);
+    card.appendChild(header);
+
+    const qInput = document.createElement('input');
+    qInput.type = 'text'; qInput.maxLength = 200;
+    qInput.className = 'w-full border rounded-lg px-3 py-2 text-sm mb-2 focus:outline-none focus:ring-2 focus:ring-violet-300';
+    qInput.placeholder = 'Question text...';
+    qInput.setAttribute('aria-label', 'Question ' + (qi+1) + ' text');
+    qInput.value = q.q;
+    qInput.addEventListener('input', () => { editorQuestions[qi].q = qInput.value; });
+    card.appendChild(qInput);
+
+    const catInput = document.createElement('input');
+    catInput.type = 'text'; catInput.maxLength = 30;
+    catInput.className = 'w-full border rounded-lg px-3 py-2 text-xs mb-2 focus:outline-none focus:ring-2 focus:ring-violet-300';
+    catInput.placeholder = 'Category (optional)';
+    catInput.setAttribute('aria-label', 'Question ' + (qi+1) + ' category');
+    catInput.value = q.cat || '';
+    catInput.addEventListener('input', () => { editorQuestions[qi].cat = catInput.value; });
+    card.appendChild(catInput);
+
+    q.choices.forEach((ch, ci) => {
+      const row = document.createElement('div');
+      row.className = 'flex gap-2 mb-1 items-center';
+      const radio = document.createElement('input');
+      radio.type = 'radio'; radio.name = 'correct-' + qi;
+      radio.checked = (ci === q.correct);
+      radio.className = 'accent-violet-600 mt-0.5';
+      radio.setAttribute('aria-label', 'Mark as correct answer');
+      radio.addEventListener('change', () => { editorQuestions[qi].correct = ci; });
+      const chInput = document.createElement('input');
+      chInput.type = 'text'; chInput.maxLength = 100;
+      chInput.className = 'flex-1 border rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-violet-300';
+      chInput.placeholder = 'Option ' + String.fromCharCode(65+ci);
+      chInput.setAttribute('aria-label', 'Option ' + String.fromCharCode(65+ci));
+      chInput.value = ch;
+      chInput.addEventListener('input', () => { editorQuestions[qi].choices[ci] = chInput.value; });
+      row.appendChild(radio); row.appendChild(chInput);
+      card.appendChild(row);
+    });
+    container.appendChild(card);
+  });
+}
+
+document.getElementById('btn-add-q').addEventListener('click', () => {
+  editorQuestions.push({ q: '', choices: ['','','',''], correct: 0, cat: '' });
+  renderEditor();
+});
+
+document.getElementById('btn-save-quiz').addEventListener('click', () => {
+  const title = document.getElementById('quiz-title-input').value.trim();
+  const fb = document.getElementById('create-feedback');
+  if (!title) { fb.className='text-red-500 text-sm text-center h-5'; fb.textContent='Please enter a quiz title.'; return; }
+  if (editorQuestions.length === 0) { fb.className='text-red-500 text-sm text-center h-5'; fb.textContent='Add at least one question.'; return; }
+  const invalid = editorQuestions.findIndex(q => !q.q.trim() || q.choices.some(c => !c.trim()));
+  if (invalid !== -1) { fb.className='text-red-500 text-sm text-center h-5'; fb.textContent='Q'+(invalid+1)+': fill all fields.'; return; }
+  const quizzes = loadQuizzes();
+  const newQuiz = { id: 'cq_' + Date.now(), title, questions: JSON.parse(JSON.stringify(editorQuestions)) };
+  quizzes.push(newQuiz);
+  saveQuizzes(quizzes);
+  fb.className='text-green-600 text-sm text-center h-5'; fb.textContent='Quiz saved!';
+  document.getElementById('quiz-title-input').value = '';
+  editorQuestions = [];
+  renderEditor();
+  setTimeout(() => { fb.textContent=''; }, 2000);
+});
+
+document.getElementById('btn-export').addEventListener('click', () => {
+  const title = document.getElementById('quiz-title-input').value.trim() || 'my-quiz';
+  const data = { title, questions: editorQuestions };
+  const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = title.replace(/\s+/g,'-').toLowerCase() + '.json';
+  a.click();
+  URL.revokeObjectURL(a.href);
+});
+
+document.getElementById('import-file').addEventListener('change', e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      const data = JSON.parse(ev.target.result);
+      if (!data.title || !Array.isArray(data.questions)) throw new Error('Invalid format');
+      document.getElementById('quiz-title-input').value = data.title;
+      editorQuestions = data.questions;
+      renderEditor();
+      const fb = document.getElementById('create-feedback');
+      fb.className='text-green-600 text-sm text-center h-5'; fb.textContent='Imported!';
+      setTimeout(()=>{ fb.textContent=''; },2000);
+    } catch(_) {
+      const fb = document.getElementById('create-feedback');
+      fb.className='text-red-500 text-sm text-center h-5'; fb.textContent='Invalid JSON file.';
+    }
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+});
+
+// ── Manage Tab ──
+function renderManage() {
+  const quizzes = loadQuizzes();
+  const list = document.getElementById('manage-list');
+  const empty = document.getElementById('manage-empty');
+  list.innerHTML = '';
+  if (!quizzes.length) { empty.classList.remove('hidden'); return; }
+  empty.classList.add('hidden');
+  quizzes.forEach((quiz, i) => {
+    const card = document.createElement('div');
+    card.className = 'bg-white rounded-xl p-4 shadow-sm border border-violet-100 flex justify-between items-center gap-2';
+    const info = document.createElement('div');
+    const title = document.createElement('p');
+    title.className = 'font-semibold text-slate-700';
+    title.textContent = quiz.title;
+    const meta = document.createElement('p');
+    meta.className = 'text-xs text-slate-400';
+    meta.textContent = quiz.questions.length + ' questions';
+    info.appendChild(title); info.appendChild(meta);
+    const del = document.createElement('button');
+    del.className = 'px-3 py-1.5 text-sm text-red-500 border border-red-200 rounded-lg hover:bg-red-50 focus:outline-none';
+    del.textContent = 'Delete';
+    del.setAttribute('aria-label', 'Delete quiz: ' + quiz.title);
+    del.addEventListener('click', () => {
+      const all = loadQuizzes();
+      all.splice(all.findIndex(q=>q.id===quiz.id),1);
+      saveQuizzes(all);
+      renderManage();
+    });
+    card.appendChild(info); card.appendChild(del);
+    list.appendChild(card);
+  });
+}
+
+// ── Init ──
+renderQuizList();
+renderEditor();
+</script>
+</body>
+</html>
